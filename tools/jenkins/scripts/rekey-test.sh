@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-set -euxo pipefail
 
-AWXKIT_FORK=${AWXKIT_FORK:-ansible}
-AWXKIT_BRANCH=${AWXKIT_BRANCH:-devel}
-AWXKIT_REPO=${AWXKIT_REPO:-tower}
-VARS_FILE=${VARS_FILE:-playbooks/vars.yml}
+set -euxo pipefail
 
 # shellcheck source=lib/common
 source "$(dirname "${0}")"/lib/common
 
+AWXKIT_FORK=${AWXKIT_FORK:-ansible}
+AWXKIT_BRANCH=${AWXKIT_BRANCH:-$(retrieve_version_branch "$(cat VERSION)")}
+AWXKIT_REPO=${AWXKIT_REPO:-tower}
+VARS_FILE=${VARS_FILE:-playbooks/vars.yml}
+
+# -- Start
+#
 setup_python3_env
 
 pip install -qUr scripts/requirements.install

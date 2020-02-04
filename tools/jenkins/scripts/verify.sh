@@ -11,6 +11,8 @@ setup_python3_env
 
 pip install -Ur scripts/requirements.install
 pip install -Ur requirements.txt
+AWXKIT_BRANCH=$(retrieve_version_branch "$(cat VERSION)")
+pip install -qU "git+ssh://git@github.com/ansible/tower.git@${AWXKIT_BRANCH}#egg=awxkit[websockets]&subdirectory=awxkit"
 
 echo "y" | pip uninstall pytest-mp || true
 

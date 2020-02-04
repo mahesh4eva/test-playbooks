@@ -103,6 +103,17 @@ function setup_env_based_on_deployment_scenario {
     esac
 }
 
+function retrieve_version_branch {
+
+    version=$1
+
+    if [[ "${version}" == "devel" ]]; then
+        echo "devel"
+    else
+        echo "release_${version}"
+    fi
+}
+
 function retrieve_aw_repo_url_based_on_version {
 
     if [[ "${FROM_STAGE}" == "yes" ]]; then

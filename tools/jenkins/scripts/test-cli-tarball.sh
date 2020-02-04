@@ -21,6 +21,8 @@ fi
 pip install "${AW_REPO_URL}/cli/ansible-tower-cli-latest.tar.gz"
 pip install -r scripts/requirements.install
 pip install -r requirements.txt
+AWXKIT_BRANCH=$(retrieve_version_branch "$(cat VERSION)")
+pip install -qU "git+ssh://git@github.com/ansible/tower.git@${AWXKIT_BRANCH}#egg=awxkit[websockets]&subdirectory=awxkit"
 
 if [[ -z "${INVENTORY}" ]]; then
     INVENTORY=$(retrieve_inventory_file)

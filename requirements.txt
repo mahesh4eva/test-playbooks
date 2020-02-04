@@ -7,8 +7,6 @@ elasticsearch
 fauxfactory
 gcloud
 git+ssh://git@github.com/ansible/pytest-ansible.git
-# when we cut 3.6.0 we should switch awxkit to come from tower@release_3.6.0
-git+ssh://git@github.com/ansible/awx.git#egg=awxkit[websockets]&subdirectory=awxkit
 git+ssh://git@github.com/jlaska/pytest-github.git
 google-api-python-client
 junit-xml

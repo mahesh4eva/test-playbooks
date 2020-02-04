@@ -2,11 +2,14 @@
 
 set -euxo pipefail
 
+# shellcheck source=lib/common
+source "$(dirname "${0}")"/lib/common
+
 TESTEXPR=${TESTEXPR:-''}
 INVENTORY=${INVENTORY:-''}
 AW_REPO_URL=${AW_REPO_URL:-''}
 TOWER_FORK=${TOWER_FORK:-'ansible'}
-TOWER_BRANCH=${TOWER_BRANCH:-'devel'}
+TOWER_BRANCH=${TOWER_BRANCH:-$(retrieve_version_branch "$(cat VERSION)")}
 PRODUCT=${PRODUCT:-'awx'}
 AWXKIT_FORK=${TOWERKIT_FORK:-${TOWER_FORK}}
 AWXKIT_BRANCH=${TOWERKIT_BRANCH:-${TOWER_BRANCH}}
@@ -18,7 +21,8 @@ if [[ -n "${TESTEXPR}" ]]; then
     TESTEXPR=" and (${TESTEXPR})"
 fi
 
-source "$(dirname "${0}")"/lib/common
+# -- Start
+#
 setup_python3_env
 
 pip install -Ur scripts/requirements.install

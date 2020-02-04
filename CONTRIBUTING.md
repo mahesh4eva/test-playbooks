@@ -13,6 +13,9 @@ To clone it locally run:
 
 ```
 #> git clone git@github.com:ansible/tower-qa.git
+#> virtualenv /path/to/virtualenv && source /path/to/virtualenv/bin/activate
+#> cd tower-qa && pip install -r requirements.txt
+#> pip install -U "git+ssh://git@github.com/ansible/awx.git@devel#egg=awxkit[websockets]&subdirectory=awxkit"
 ```
 
 Whenever you submit a contribution to `ansible/tower-qa` it will go through some CI testing for lint.

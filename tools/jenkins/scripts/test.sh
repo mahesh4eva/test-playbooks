@@ -2,10 +2,13 @@
 
 set -euxo pipefail
 
+# shellcheck source=lib/common
+source "$(dirname "${0}")"/lib/common
+
 TESTEXPR=${TESTEXPR:-''}
 INVENTORY=${INVENTORY:-''}
 TOWER_FORK=${TOWER_FORK:-'ansible'}
-TOWER_BRANCH=${TOWER_BRANCH:-'devel'}
+TOWER_BRANCH=${TOWER_BRANCH:-$(retrieve_version_branch "$(cat VERSION)")}
 PRODUCT=${PRODUCT:-'awx'}
 AWXKIT_FORK=${TOWERKIT_FORK:-${TOWER_FORK}}
 AWXKIT_BRANCH=${TOWERKIT_BRANCH:-${TOWER_BRANCH}}
@@ -15,17 +18,11 @@ PYTEST_NUMPROCESSES="4"
 
 # -- Start
 #
-# shellcheck source=lib/common
-source "$(dirname "${0}")"/lib/common
-
 setup_python3_env
 
 pip install -Ur scripts/requirements.install
 pip install -Ur requirements.txt
-
-if [[ -n "${AWXKIT_BRANCH}" ]]; then
-    pip install -U "git+ssh://git@github.com/${AWXKIT_FORK}/${AWXKIT_REPO}.git@${AWXKIT_BRANCH}#egg=awxkit[websockets]&subdirectory=awxkit"
-fi
+pip install -U "git+ssh://git@github.com/${AWXKIT_FORK}/${AWXKIT_REPO}.git@${AWXKIT_BRANCH}#egg=awxkit[websockets]&subdirectory=awxkit"
 
 echo "y" | pip uninstall pytest-mp || true
 

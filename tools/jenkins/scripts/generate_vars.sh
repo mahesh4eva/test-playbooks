@@ -5,7 +5,7 @@ set -euxo pipefail
 # Script variables
 #
 SCENARIO=${SCENARIO:-standalone}
-TOWER_VERSION=${TOWER_VERSION:-devel}
+TOWER_VERSION=${TOWER_VERSION:-$(cat VERSION)}
 ANSIBLE_VERSION=${ANSIBLE_VERSION:-devel}
 PLATFORM=${PLATFORM:-rhel-7.6-x86_64}
 BUNDLE=${BUNDLE:-no}
