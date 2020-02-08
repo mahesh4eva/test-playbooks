@@ -26,3 +26,4 @@ python-dateutil
 pytz
 requests
 slacker
+jenkinsapi

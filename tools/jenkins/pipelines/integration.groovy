@@ -334,10 +334,35 @@ Bundle?: ${params.BUNDLE}"""
             archiveArtifacts allowEmptyArchive: true, artifacts: 'artifacts/*'
             logstashSend failBuild: false, maxLines: 0
             node('jenkins-jnlp-agent') {
-                script {
-                    json = "{\"tower\":\"${params.TOWER_VERSION}\", \"bundle\":\"${params.BUNDLE}\", \"url\": \"${env.RUN_DISPLAY_URL}\", \"component\":\"integration\", \"status\":\"${currentBuild.result}\", \"tls\":\"${params.AWX_USE_TLS}\", \"fips\":\"${params.AWX_USE_FIPS}\", \"deploy\":\"${params.SCENARIO}\", \"platform\":\"${params.PLATFORM}\", \"ansible\":\"${params.ANSIBLE_VERSION}\"}"
+                withCredentials([string(credentialsId: 'jenkins_username', variable: 'JENKINS_USERNAME'),
+                                    string(credentialsId: 'jenkins_token', variable: 'JENKINS_TOKEN')]) {
+                    withEnv(["JENKINS_URL=http://jenkins.ansible.eng.rdu2.redhat.com",
+                                "JENKINS_USERNAME=${JENKINS_USERNAME}",
+                                "JENKINS_TOKEN=${JENKINS_TOKEN}",
+                                "TOWER_VERSION=${params.TOWER_VERSION}",
+                                "PLATFORM=${params.PLATFORM}",
+                                "DEPLOY=${params.SCENARIO}",
+                                "BUNDLE=${params.BUNDLE}",
+                                "TLS=${params.AWX_USE_TLS}",
+                                "FIPS=${params.AWX_USE_FIPS}",
+                                "ANSIBLE=${params.ANSIBLE_VERSION}",
+                                "STATUS=${currentBuild.result}",
+                                "RUN_DISPLAY_URL=${env.RUN_DISPLAY_URL}",
+                                "JOB_NAME=Pipelines/openshift-integration-pipeline",
+                                "BUILD_ID=${currentBuild.id}"
+                                ]) {
+                        script {
+                            sign_off_jobs = "{\"tower\":\"${params.TOWER_VERSION}\", \"bundle\":\"${params.BUNDLE}\", \"url\": \"${env.RUN_DISPLAY_URL}\", \"component\":\"integration\", \"status\":\"${currentBuild.result}\", \"tls\":\"${params.AWX_USE_TLS}\", \"fips\":\"${params.AWX_USE_FIPS}\", \"deploy\":\"${params.SCENARIO}\", \"platform\":\"${params.PLATFORM}\", \"ansible\":\"${params.ANSIBLE_VERSION}\"}"
+                            content = sh(
+                                script: "python tools/jenkins/scripts/test_result_json.py",
+                                returnStdout: true
+                            )
+                            failed_tests = "${content}"
+                        }
+                        sh "test ${params.UPDATE_QE_DASHBOARD} = 'yes' && curl -v -X POST 'http://tower-qe-dashboard.ansible.eng.rdu2.redhat.com/jenkins/sign_off_jobs' -H 'Content-type: application/json' -d '${sign_off_jobs}' || echo 'Not updating dashboard for this run'"
+                        sh "test ${params.UPDATE_QE_DASHBOARD} = 'yes' && curl -v -X POST 'http://tower-qe-dashboard.ansible.eng.rdu2.redhat.com/jenkins/integration_tests' -H 'Content-type: application/json' -d '${failed_tests}' || echo 'Not updating dashboard for this run'"
+                    }
                 }
-                sh "test ${params.UPDATE_QE_DASHBOARD} = 'yes' && curl -v -X POST 'http://tower-qe-dashboard.ansible.eng.rdu2.redhat.com/jenkins/sign_off_jobs' -H 'Content-type: application/json' -d '${json}' || echo 'Not updating dashboard for this run'"
             }
         }
 
