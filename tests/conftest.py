@@ -74,3 +74,10 @@ def session_install_enterprise_license_unlimited(session_authtoken, v2_session):
                 # No need to apply license again, allready have a valid one that is sufficient for our needs
                 return
     apply_license_until_effective(config, license_info)
+
+
+def pytest_collection_modifyitems(items):
+    """Modify tests related to `container_group` to run in serial."""
+    for item in items:
+        if "container_group" in (item.nodeid):
+            item.add_marker(pytest.mark.serial)
