@@ -404,22 +404,6 @@ class TestHashiCorpVaultCredentials(APITest):
     def launch_job(self, factories, v2, hashicorp_api_version, secret_version, path, url=None,
                     token=config.credentials.hashivault.token, secret_key='username'):
 
-        # create a credential w/ a hashicorp token
-        cred_type = v2.credential_types.get(
-            managed_by_tower=True,
-            name='HashiCorp Vault Secret Lookup'
-        ).results.pop()
-        inputs = {
-            'url': url,
-            'token': token,
-            'api_version': hashicorp_api_version
-        }
-        payload = factories.credential.payload(
-            name=fauxfactory.gen_utf8(),
-            description=fauxfactory.gen_utf8(),
-            credential_type=cred_type,
-            inputs=inputs
-        )
         hashi_credential = self.create_hashicorp_vault_credential(factories, v2, url, token, hashicorp_api_version)
 
         # create an SSH credential
