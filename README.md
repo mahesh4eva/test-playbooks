@@ -64,7 +64,7 @@ git clone git@github.com:ansible/tower-license.git
 # Then install the tower-license module in the awx venv
 # It is necessary to provide the user id so you will have permission to write
 # to /venv/awx
-docker exec --user=0 -it tools_awx_1 bash -c "source /venv/awx/bin/activate; pip install awx_devel/tower-license/"
+docker exec --user=0 -it tools_awx_1 bash -c "source /venv/awx/bin/activate; pip install /awx_devel/tower-license/"
 
 # Or access the dev container by providing the user id
 docker exec --user=0 -it tools_awx_1 bash
