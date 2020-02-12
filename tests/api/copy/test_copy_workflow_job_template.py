@@ -1,9 +1,16 @@
 from fauxfactory import gen_boolean, gen_alpha, gen_choice
 from awxkit.utils import poll_until
+from awxkit.exceptions import NoContent
 import pytest
 
 from tests.api import APITest
 from tests.lib.helpers.copy_utils import check_fields
+
+from tests.api.workflows.utils import (
+    get_job_node,
+    get_job_status,
+)
+from tests.lib.helpers.workflow_utils import (WorkflowTree, WorkflowTreeMapper)
 
 
 @pytest.mark.usefixtures('authtoken')
@@ -167,3 +174,57 @@ class Test_Copy_Workflow_Job_Template(APITest):
             assert v2.workflow_job_templates.get(id=wfjt_copy.id).count == 1
         with self.current_user(wf_read_user.username, wf_read_user.password):
             assert v2.workflow_job_templates.get(id=wfjt_copy.id).count == 0
+
+    def test_copy_wfjt_with_convergence_node(self, factories, copy_with_teardown):
+        """Create a workflow with a convergence and copy it to verify if the convergence property is preserved."""
+        host = factories.host()
+        wfjt = factories.workflow_job_template()
+        jt_success_1 = factories.job_template(
+            inventory=host.ds.inventory,
+            allow_simultaneous=True)
+        jt_failure = factories.job_template(
+            inventory=host.ds.inventory,
+            allow_simultaneous=True,
+            playbook='fail_unless.yml')
+        jt_success_2 = factories.job_template(
+            inventory=host.ds.inventory,
+            allow_simultaneous=True)
+        n1_success = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt_success_1)
+        n2_failure = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt_failure)
+        convergence_node = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt_success_2, all_parents_must_converge=True)
+        with pytest.raises(NoContent):
+            n1_success.related.success_nodes.post(dict(id=convergence_node.id))
+        with pytest.raises(NoContent):
+            n2_failure.related.success_nodes.post(dict(id=convergence_node.id))
+        # Run the job
+        wfj = wfjt.launch().wait_until_completed()
+        tree = WorkflowTree(wfjt)
+        job_tree = WorkflowTree(wfj)
+        mapping = WorkflowTreeMapper(tree, job_tree).map()
+        convergence_workflow_job_node = get_job_node(wfj, convergence_node.id, mapping)
+
+        # Assert each job reached expected states
+        assert 'successful' == get_job_status(wfj, n1_success.id, mapping)
+        assert 'failed' == get_job_status(wfj, n2_failure.id, mapping)
+        assert convergence_workflow_job_node.do_not_run
+
+        # Make a copy and assert that the convergence property is preserved
+        wfjt_copy = copy_with_teardown(wfjt)
+
+        # Run the job from copy wfjt
+        wfj_copy = wfjt_copy.launch().wait_until_completed()
+        tree_copy = WorkflowTree(wfjt_copy)
+        job_tree_copy = WorkflowTree(wfj_copy)
+        mapping_copy = WorkflowTreeMapper(tree_copy, job_tree_copy).map()
+        n1_success_copy = wfjt_copy.related.workflow_nodes.get(unified_job_template=jt_success_1.id).results.pop()
+        n2_failure_copy = wfjt_copy.related.workflow_nodes.get(unified_job_template=jt_failure.id).results.pop()
+        convergence_node_copy = wfjt_copy.related.workflow_nodes.get(unified_job_template=jt_success_2.id).results.pop()
+        convergence_workflow_job_node_copy = get_job_node(wfj_copy, convergence_node_copy.id, mapping_copy)
+
+        # Assert each job reached expected states
+        assert 'successful' == get_job_status(wfj_copy, n1_success_copy.id, mapping_copy)
+        assert 'failed' == get_job_status(wfj_copy, n2_failure_copy.id, mapping_copy)
+        assert convergence_workflow_job_node_copy.do_not_run

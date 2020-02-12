@@ -907,3 +907,144 @@ class Test_Workflow_Convergence(APITest):
         wfj = wfjt.launch().wait_until_completed(timeout=NUM_NODES * 60)
         assert 'successful' == wfj.status
         print('*******WF took {} to complete*******'.format(wfj.elapsed))
+
+    convergence_node_all_parents_must_converge_test_cases = [
+        ConvergenceNodeTestCase(
+            ('n0_success',
+             'n1_success'),
+            'Success-Parents-Success-Relation'),
+        ConvergenceNodeTestCase(
+            ('n0_success',
+             'n2_fail_on_failure_link'),
+            'Success-And-Failure-Parents-Failure-Relation'),
+        ConvergenceNodeTestCase(
+            ('n1_success',
+             'n2_fail_on_success_link'),
+            'Success-And-Failure-Parents-Success-Relation'),
+        ConvergenceNodeTestCase(
+            ('n1_success',
+             'n3_dnr'),
+            'DNR-And-Success-Parents-Always-Relation'),
+    ]
+
+    @pytest.mark.parametrize(
+        'test_case', convergence_node_all_parents_must_converge_test_cases,
+        ids=[case.case_name for case in convergence_node_all_parents_must_converge_test_cases])
+    def test_convergence_node_when_all_parents_must_converge_is_set_to_true(
+            self, skip_if_openshift, factories, test_case):
+        """Confirm that convergence node job runs/skips depending on the scenario
+        when all_parents_must_converge property is set to true
+
+        Workflow:
+
+        n0_success (uses jt that succeeds)
+        n1_success: (uses jt that succeeds)
+        n2_failure: (uses jt that fails)
+        n3_dnr: (this node does not run)
+
+        Parameterized values:
+            Each test case tests a different combination of "parent" nodes for the convergence node.
+
+        Expect:
+         - convergence_node should run and succeed or not run, depending on the scenario
+         - convergence_node should not have started until all parents have finished
+        """
+
+        host = factories.host()
+        wfjt = factories.workflow_job_template()
+        jt = factories.job_template(
+            inventory=host.ds.inventory,
+            allow_simultaneous=True)
+        jt_failure = factories.job_template(
+            inventory=host.ds.inventory,
+            allow_simultaneous=True,
+            playbook='fail_unless.yml')
+
+        # Creation of the workflow nodes
+        n0_success = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt)
+        n1_success = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt)
+        n2_failure = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt_failure)
+        n3_dnr = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt)
+        convergence_node = factories.workflow_job_template_node(
+            workflow_job_template=wfjt, unified_job_template=jt, all_parents_must_converge=True)
+        # set convergence to True, which means "ALL" parents must converge for the node to run
+        assert convergence_node.all_parents_must_converge
+        # Assert that convergence is set to False by default,
+        # which means if "ANY" of the parents would trigger it then it will run
+        assert not n0_success.all_parents_must_converge
+
+        parent_nodes = []
+
+        # Associate convergence node with it's parents depending upon the scenario
+        if 'n0_success' in test_case.parent_nodes:
+            parent_nodes.append((n0_success, 'success parent'))
+            with pytest.raises(NoContent):
+                n0_success.related.success_nodes.post(dict(id=convergence_node.id))
+        if 'n1_success' in test_case.parent_nodes:
+            parent_nodes.append((n1_success, 'success parent'))
+            with pytest.raises(NoContent):
+                n1_success.related.success_nodes.post(dict(id=convergence_node.id))
+        if 'n2_fail_on_success_link' in test_case.parent_nodes:
+            parent_nodes.append((n2_failure, 'failure node parent'))
+            with pytest.raises(NoContent):
+                n2_failure.related.success_nodes.post(dict(id=convergence_node.id))
+        if 'n2_fail_on_failure_link' in test_case.parent_nodes:
+            parent_nodes.append((n2_failure, 'failure node parent'))
+            with pytest.raises(NoContent):
+                n2_failure.related.failure_nodes.post(dict(id=convergence_node.id))
+        if 'n3_dnr' in test_case.parent_nodes:
+            parent_nodes.append((n3_dnr, 'failure node parent'))
+            with pytest.raises(NoContent):
+                n3_dnr.related.always_nodes.post(dict(id=convergence_node.id))
+            with pytest.raises(NoContent):
+                n2_failure.related.success_nodes.post(dict(id=n3_dnr.id))
+
+        # Run the job
+        wfj = wfjt.launch().wait_until_completed()
+        tree = WorkflowTree(wfjt)
+        job_tree = WorkflowTree(wfj)
+        mapping = WorkflowTreeMapper(tree, job_tree).map()
+
+        # Assert each job reached expected states
+        assert 'successful' == get_job_status(wfj, n0_success.id, mapping)
+        assert 'successful' == get_job_status(wfj, n1_success.id, mapping)
+        assert 'failed' == get_job_status(wfj, n2_failure.id, mapping)
+
+        convergence_workflow_job_node = get_job_node(wfj, convergence_node.id, mapping)
+        assert convergence_workflow_job_node.all_parents_must_converge
+
+        # Assert that in the case where one of the parents is a Failure node or  DNR, the convergence node did not run
+        if test_case.case_name in ['Success-And-Failure-Parents-Success-Relation', 'DNR-And-Success-Parents-Always-Relation']:
+            assert convergence_workflow_job_node.do_not_run
+        # Assert that in other cases, the convergence node ran successfully
+        else:
+            assert 'successful' == get_job_status(wfj, convergence_node.id, mapping)
+            assert not convergence_workflow_job_node.do_not_run
+
+        # Assert that all parent jobs ended before convergence node started
+        if not convergence_workflow_job_node.do_not_run:
+            nodes_still_running_when_convergence_job_started = []
+            for parent_node_and_name in parent_nodes:
+                parent = parent_node_and_name[0]
+                description = parent_node_and_name[1]
+                parent_job_node = get_job_node(wfj, parent.id, mapping)
+                if not parent_job_node.do_not_run:
+                    parent_job = parent_job_node.related['job'].get()
+                    # if convergence job started before its parent finished,
+                    # that is a problem
+                    convergence_job = get_job_node(
+                        wfj, convergence_node.id, mapping).related['job'].get()
+                    convergence_job.assert_successful()
+                    if convergence_job.started < parent_job.finished:
+                        nodes_still_running_when_convergence_job_started.append(
+                            'convergence_node started at {0} which is before parent_job end time {1}, parent job was {2} '.format(
+                                convergence_job.started, parent_job.finished, description))
+
+            if nodes_still_running_when_convergence_job_started:
+                raise AssertionError(
+                    'Convergence node started before parent job finisheds. Errors were:\n{}'.format(
+                        '\n'.join(nodes_still_running_when_convergence_job_started)))
