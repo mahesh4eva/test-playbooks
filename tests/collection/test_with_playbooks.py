@@ -8,7 +8,6 @@ from tests.api import APITest
 from tests.collection import CUSTOM_VENVS, CUSTOM_VENVS_NAMES
 
 TOWER_MODULES_PARAMS = [
-    'common',
     'credential',
     'credential_type',
     'group',
