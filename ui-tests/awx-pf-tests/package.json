@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@percy/cypress": "0.0.4",
+    "@percy/cypress": "^2.3.0",
     "cypress": "^3.6.1",
     "eslint": "^6.6.0",
     "eslint-plugin-cypress": "^2.7.0",

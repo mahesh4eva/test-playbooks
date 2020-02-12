@@ -638,7 +638,7 @@ pipeline {
                         parameters: [
                             string(name: 'AWX_E2E_URL', value: "${E2E_HOSTNAME}"),
                             password(name: 'AWX_E2E_PASSWORD', value: "${ADMIN_PASSWORD}"),
-                            string(name: 'UI_REPO', value: "git@github.com:${TOWER_FORK}/tower.git"),
+                            string(name: 'UI_REPO', value: "git@github.com:${TOWER_FORK}/${params.PRODUCT}.git"),
                             string(name: 'UI_BRANCH', value: "${TOWER_BRANCH}"),
                             string(name: 'E2E_TEST_REPO', value: "git@github.com:${TOWER_QA_FORK}/tower-qa.git"),
                             string(name: 'E2E_TEST_BRANCH', value: "${TOWER_QA_BRANCH}"),
