@@ -513,3 +513,24 @@ class Test_Job_Events(APITest):
                 assert child_event.parent_uuid == parent_event.uuid, (
                     'The event {} is not listed as a child of {}'.format(child, parent)
                 )
+
+    def test_host_summary_on_events(self, factories):
+        host = factories.host()
+        jt = factories.job_template(
+            inventory=host.ds.inventory,
+            playbook='debug.yml',
+        )
+        job = jt.launch().wait_until_completed(interval=20)
+
+        runner_events = self.get_job_events_by_event_type(job, 'runner')
+        assert len(runner_events) == 2, str(runner_events)
+        assert all([event['host'] == host.id for event in runner_events]), str(runner_events)
+        assert all([event['host_name'] == host.name for event in runner_events]), str(runner_events)
+        assert all([
+            event['summary_fields']['host'] == {
+                'id': host.id,
+                'name': host.name,
+                'description': host.description,
+            }
+            for event in runner_events
+        ]), str(runner_events)
