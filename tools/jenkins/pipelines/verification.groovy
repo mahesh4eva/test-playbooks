@@ -91,6 +91,9 @@ Platform under test: ${params.PLATFORM}"""
                         run_major_upgrade = false
                     } else if (params.TOWER_VERSION ==~ /3\.4\.[0-9]+/ && params.ANSIBLE_VERSION ==~ /stable-2\.9|devel/) {
                         run_major_upgrade = false
+                    } else if (params.TOWER_VERSION ==~ /3\.5\.[0-9]+/) {
+                        // FIXME deployments of 3.4.x are broken because of setuptools dropping support of python2
+                        run_major_upgrade = false
                     } else {
                         run_major_upgrade = true
                     }
