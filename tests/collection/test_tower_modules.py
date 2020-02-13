@@ -483,6 +483,7 @@ class Test_Ansible_Tower_Modules(APITest):
 
     def test_ansible_tower_module_job(self, request, ansible_collections_path, factories, v2, venv_path, is_docker, ansible_adhoc, python_venv, collection_fqcn):
         jt_name = utils.random_title()
+        vault_cred = factories.credential(kind='vault', inputs=dict(vault_password='fake'))
         project = factories.project()
         inventory = factories.inventory()
         factories.host(inventory=inventory, variables=dict(ansible_host='localhost', ansible_connection='local'))
@@ -505,6 +506,7 @@ class Test_Ansible_Tower_Modules(APITest):
             'inventory': inventory.name,
             'playbook': 'sleep.yml',
             'project': project.name,
+            'vault_credential': vault_cred.name,
             'extra_vars': {'sleep_interval': 120},
         }
         module_output = self.run_module(venv_path(python_venv['name']), ansible_adhoc, is_docker, request, collection_fqcn + '.tower_job_template', jt_module_args)
@@ -519,6 +521,13 @@ class Test_Ansible_Tower_Modules(APITest):
         assert jt['playbook'] == 'sleep.yml'
         assert jt['project'] == project.id
         assert jt['extra_vars'] == '{"sleep_interval": 120}'
+
+        jt_cred = jt['related']['credentials'].get()['results']
+
+        assert len(jt_cred) == 1
+        assert jt_cred[0]['id'] == vault_cred.id
+        assert jt_cred[0]['name'] == vault_cred.name
+        assert jt_cred[0]['kind'] == 'vault'
 
         # Launch the JT we just built
         job_module_args = {
@@ -556,6 +565,13 @@ class Test_Ansible_Tower_Modules(APITest):
         assert jt['playbook'] == 'sleep.yml'
         assert jt['project'] == project.id
         assert jt['extra_vars'] == '{"sleep_interval": 5}'
+
+        jt_cred = jt['related']['credentials'].get()['results']
+
+        assert len(jt_cred) == 1
+        assert jt_cred[0]['id'] == vault_cred.id
+        assert jt_cred[0]['name'] == vault_cred.name
+        assert jt_cred[0]['kind'] == 'vault'
 
         # Launch another job
         job_module_args = {
