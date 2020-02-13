@@ -65,7 +65,7 @@ class TestInstances(APITest):
         job.wait_until_completed(timeout=120).assert_successful()
 
     @pytest.mark.github('https://github.com/ansible/tower/issues/4095', skip=True)
-    def test_instances_have_uniqe_uuids(self, v2):
+    def test_instances_have_unique_uuids(self, v2):
         """Assert all nodes have a unique uuid.
 
         Regression test for https://github.com/ansible/tower/issues/4056
