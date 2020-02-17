@@ -105,7 +105,7 @@ def create_issue_update():
             issue['assigned'] = is_issue_assigned(issue)
             needs_test.append(issue)
 
-    unassigned_api, unassigned_ui = 0, 0
+    unassigned_api, unassigned_ui, unassigned_ui_next = 0, 0, 0
     for issue in needs_test:
         if not issue['assigned']:
             labels = [label['name'] for label in issue['labels']]
@@ -113,11 +113,13 @@ def create_issue_update():
                 unassigned_api += 1
             if 'component:ui' in labels:
                 unassigned_ui += 1
+            if 'component:ui_next' in labels:
+                unassigned_ui_next += 1
 
     extra_msg = ''
-    if unassigned_api or unassigned_ui:
-        extra_msg = " | {} API and {} UI issues are in needs_test and unassigned, @qe please assign yourselves".format(
-            unassigned_api, unassigned_ui
+    if unassigned_api or unassigned_ui or unassigned_ui_next:
+        extra_msg = " | {} API and {} UI and {} ui_next issues are in needs_test and unassigned, @qe please assign yourselves".format(
+            unassigned_api, unassigned_ui, unassigned_ui_next
         )
 
     url = 'https://github.com/issues?q=is:open+is:issue+project:ansible/{}'.format(
