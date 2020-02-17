@@ -5,6 +5,7 @@
   "scripts": {
     "cypress": "cypress open",
     "cypress-headless": "cypress run",
+    "percy": "percy exec -- cypress run --config integrationFolder=cypress/percyintegration",
     "lint": "eslint --ext .js .",
     "prettier": "prettier --print-width 100 --no-semi --single-quote --trailing-comma es5 --write \"cypress/**/*.js\"",
     "prettier-check": "prettier --check --print-width 100 --no-semi --single-quote --trailing-comma es5 \"cypress/**/*.js\""
